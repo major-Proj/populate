@@ -14,6 +14,7 @@ def process_time_frame(
     end_date_timesheet,
     project_allocations,
     fake_timesheet_entries,
+    fake_feedback_histories
 ):
     total = 0
     for user, allocations in project_allocations.items():
@@ -29,10 +30,12 @@ def process_time_frame(
                 allowed_projects.append(project)
 
         print(allowed_projects)
-
+        
+        selected_projects = set()
         if allowed_projects:
             for _ in range(numberOfEntries):
                 project = random.choice(allowed_projects)  # Randomly select a project
+                selected_projects.add(project)
 
                 UID = "".join(random.choices(string.digits, k=7))
                 number_of_hours_per_entry = math.floor(20 / numberOfEntries)
@@ -89,6 +92,17 @@ def process_time_frame(
 
             total += 1
 
+        if isSubmitted:
+            for project in list(selected_projects):
+                fake_feedback_histories.append({
+                "PID":project,
+                "email":user,
+                "start_period":start_date_timesheet,
+                "end_period":end_date_timesheet,
+                "feedback_given":random.choice([True,False]),
+                "created_at":datetime.now()
+            })
+
     print("Total fake timesheet entries generated:", total)
 
 def PopulateUsers(db):
@@ -114,7 +128,6 @@ def PopulateUsers(db):
         fake_users.append(single_user)
 
     db["users"].insert_many(fake_users)
-
 
 def PopulateProjects(db):
     project_names = [
@@ -158,7 +171,6 @@ def PopulateProjects(db):
         fake_projects.append(single_project)
 
     db["projects"].insert_many(fake_projects)
-
 
 def PopulateAssignments(db):
     all_projects = []
@@ -217,8 +229,6 @@ def PopulateAssignments(db):
 
     db["projectassignments"].insert_many(fake_allocation)
 
-
-
 def PopulateTimesheets(db):
     project_allocations = defaultdict(dict)
 
@@ -230,6 +240,7 @@ def PopulateTimesheets(db):
         }
 
     fake_timesheet_entries = []
+    fake_feedback_histories = []
 
     # Initialize start and end dates for the timesheets
     start_date_timesheet = datetime(2024, 1, 1)
@@ -247,6 +258,7 @@ def PopulateTimesheets(db):
                     end_date_timesheet,
                     project_allocations,
                     fake_timesheet_entries,
+                    fake_feedback_histories
                 )
             )
             start_date_timesheet += timedelta(days=7)
@@ -257,21 +269,8 @@ def PopulateTimesheets(db):
             future.result()
 
     db['timesheets'].insert_many(fake_timesheet_entries)
-    print(len(fake_timesheet_entries))
-
-def PopulateFeedbackHistories(db):
-    fake_feedback_histories = []
-    for doc in db['timesheets'].find({"submitted":True}):
-        fake_feedback_histories.append({
-            "PID":doc["PID"],
-            "email":doc["email"],
-            "start_period":doc["start_period"],
-            "end_period":doc["end_period"],
-            "feedback_given":random.choice([True,False]),
-            "created_at":datetime.now()
-        })
-    
     db['feedback_histories'].insert_many(fake_feedback_histories)
+    print(len(fake_timesheet_entries))
 
 def PopulateFeedbacks(db):
     fake_feedbacks = []
@@ -311,7 +310,6 @@ def PopulateFunction():
     # PopulateProjects(db)
     # PopulateAssignments(db)
     #PopulateTimesheets(db)
-    #PopulateFeedbackHistories(db)
     PopulateFeedbacks(db)
 
 
